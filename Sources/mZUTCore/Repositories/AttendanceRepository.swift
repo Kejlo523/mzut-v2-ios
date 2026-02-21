@@ -7,11 +7,40 @@ public final class AttendanceRepository {
     }
 
     private let store: KeyValueStore
+    private let planRepository: PlanRepository?
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
-    public init(store: KeyValueStore = UserDefaultsStore(suiteName: "attendance_prefs")) {
+    public init(
+        planRepository: PlanRepository? = nil,
+        store: KeyValueStore = UserDefaultsStore(suiteName: "attendance_prefs")
+    ) {
+        self.planRepository = planRepository
         self.store = store
+    }
+
+    public func loadSubjectsWithAbsences(forceRefresh: Bool = false) async -> [Absence] {
+        guard let planRepository else {
+            return loadSubjectsWithAbsences(subjects: [])
+        }
+
+        let subjectFilters: [SubjectFilterItem]
+        do {
+            subjectFilters = try await planRepository.loadSubjectsForFilter(forceRefresh: forceRefresh)
+        } catch {
+            subjectFilters = []
+        }
+
+        let baseSubjects = subjectFilters.map { item in
+            Absence(
+                subjectName: item.label,
+                subjectType: item.typeLabel,
+                subjectKey: item.filterKey,
+                absenceCount: 0,
+                totalHours: 0
+            )
+        }
+        return loadSubjectsWithAbsences(subjects: baseSubjects)
     }
 
     public func loadSavedHours() -> [String: Int] {

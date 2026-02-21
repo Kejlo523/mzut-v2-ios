@@ -72,6 +72,17 @@ struct GradesFeatureView: View {
             return
         }
 
+        if appViewModel.isDemoContent {
+            semesters = [
+                Semester(listaSemestrowId: "demo-zimowy", nrSemestru: "5", pora: "Zimowy", rokAkademicki: "2025/2026", status: "Aktywny"),
+                Semester(listaSemestrowId: "demo-letni", nrSemestru: "6", pora: "Letni", rokAkademicki: "2025/2026", status: "Aktywny")
+            ]
+            selectedSemesterId = semesters.first?.id ?? ""
+            grades = Self.demoGrades(semesterId: selectedSemesterId)
+            isLoading = false
+            return
+        }
+
         isLoading = true
         errorMessage = nil
 
@@ -93,6 +104,11 @@ struct GradesFeatureView: View {
             return
         }
 
+        if appViewModel.isDemoContent {
+            grades = Self.demoGrades(semesterId: selectedSemesterId)
+            return
+        }
+
         guard let semester = semesters.first(where: { $0.id == selectedSemesterId }) else {
             grades = []
             return
@@ -106,6 +122,21 @@ struct GradesFeatureView: View {
             errorMessage = error.localizedDescription
             isLoading = false
         }
+    }
+
+    private static func demoGrades(semesterId: String) -> [Grade] {
+        if semesterId.contains("letni") {
+            return [
+                Grade(subjectName: "Programowanie iOS", grade: "5.0", weight: 5.0, type: "Projekt", teacher: "dr inż. A. Nowak", date: "06.06.2026"),
+                Grade(subjectName: "Systemy rozproszone", grade: "4.5", weight: 4.0, type: "Egzamin", teacher: "dr hab. M. Kowalski", date: "14.06.2026")
+            ]
+        }
+
+        return [
+            Grade(subjectName: "Algorytmy i struktury danych", grade: "4.0", weight: 6.0, type: "Egzamin", teacher: "dr J. Lewandowski", date: "30.01.2026"),
+            Grade(subjectName: "Bazy danych", grade: "5.0", weight: 5.0, type: "Laboratorium", teacher: "mgr K. Zielinski", date: "22.01.2026"),
+            Grade(subjectName: "Inzynieria oprogramowania", grade: "4.5", weight: 5.0, type: "Projekt", teacher: "dr A. Wisniewska", date: "18.01.2026")
+        ]
     }
 }
 
@@ -182,6 +213,29 @@ struct StudiesInfoFeatureView: View {
             return
         }
 
+        if appViewModel.isDemoContent {
+            details = StudyDetails(
+                album: "123456",
+                wydzial: "Wydzial Informatyki",
+                kierunek: "Informatyka",
+                forma: "Stacjonarne",
+                poziom: "I stopnia",
+                specjalnosc: "Inzynieria oprogramowania",
+                specjalizacja: "Aplikacje mobilne",
+                status: "Aktywny student",
+                rokAkademicki: "2025/2026",
+                semestrLabel: "5 Zimowy"
+            )
+            history = [
+                StudyHistoryItem(label: "1 Zimowy - 2023/2024", status: "zaliczony"),
+                StudyHistoryItem(label: "2 Letni - 2023/2024", status: "zaliczony"),
+                StudyHistoryItem(label: "3 Zimowy - 2024/2025", status: "zaliczony"),
+                StudyHistoryItem(label: "4 Letni - 2024/2025", status: "zaliczony")
+            ]
+            isLoading = false
+            return
+        }
+
         isLoading = true
         errorMessage = nil
 
@@ -255,6 +309,37 @@ struct NewsFeatureView: View {
 
     private func loadNews(forceRefresh: Bool) async {
         guard !isLoading else {
+            return
+        }
+
+        if appViewModel.isDemoContent {
+            items = [
+                NewsItem(
+                    id: 1,
+                    title: "Rejestracja na semestr letni 2025/2026",
+                    date: "20.02.2026 10:40",
+                    pubDateRaw: "",
+                    snippet: "Rozpoczela sie rejestracja na przedmioty obieralne. Sprawdz terminy i limity miejsc.",
+                    link: "https://www.zut.edu.pl",
+                    descriptionHtml: "",
+                    descriptionText: "Rozpoczela sie rejestracja na przedmioty obieralne. Sprawdz terminy i limity miejsc.",
+                    contentHtml: "",
+                    thumbUrl: ""
+                ),
+                NewsItem(
+                    id: 2,
+                    title: "Godziny pracy dziekanatu w trakcie sesji",
+                    date: "18.02.2026 09:00",
+                    pubDateRaw: "",
+                    snippet: "W okresie sesji zimowej dziekanat bedzie pracowal w wydluzonych godzinach.",
+                    link: "https://www.zut.edu.pl",
+                    descriptionHtml: "",
+                    descriptionText: "W okresie sesji zimowej dziekanat bedzie pracowal w wydluzonych godzinach.",
+                    contentHtml: "",
+                    thumbUrl: ""
+                )
+            ]
+            isLoading = false
             return
         }
 

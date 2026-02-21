@@ -58,6 +58,30 @@ public final class CustomPlanEventRepository {
         loadAll().count
     }
 
+    public func getEventsForDate(_ date: String) -> [CustomPlanEvent] {
+        loadAll().filter { $0.date == date }
+    }
+
+    public func getEventsForDateRange(start: String, end: String) -> [CustomPlanEvent] {
+        loadAll().filter { event in
+            guard !event.date.isEmpty else {
+                return false
+            }
+            return event.date >= start && event.date <= end
+        }
+    }
+
+    public func getSavedSubjectNames() -> [String] {
+        Array(
+            Set(
+                loadAll()
+                    .map { $0.subjectName.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+            )
+        )
+        .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
     public func clearAll() {
         store.removeValue(forKey: Keys.eventsData)
     }

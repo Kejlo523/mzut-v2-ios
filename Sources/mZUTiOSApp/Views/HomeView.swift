@@ -32,6 +32,33 @@ struct HomeView: View {
                             .buttonStyle(.plain)
                         }
                     }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Dodatkowe moduly")
+                            .font(.headline)
+                            .foregroundStyle(.white.opacity(0.92))
+
+                        NavigationLink {
+                            AttendanceFeatureView()
+                        } label: {
+                            quickLinkRow(title: "Obecnosci", subtitle: "Licznik nieobecnosci i godziny")
+                        }
+                        .buttonStyle(.plain)
+
+                        NavigationLink {
+                            UsefulLinksFeatureView()
+                        } label: {
+                            quickLinkRow(title: "Przydatne strony", subtitle: "Wybrane linki pod kierunek")
+                        }
+                        .buttonStyle(.plain)
+
+                        NavigationLink {
+                            SettingsFeatureView()
+                        } label: {
+                            quickLinkRow(title: "Ustawienia", subtitle: "Motyw, jezyk, powiadomienia")
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
                 .padding(16)
             }
@@ -63,8 +90,10 @@ struct HomeView: View {
     @ViewBuilder
     private func destination(for tile: Tile) -> some View {
         switch tile.actionType {
-        case .plan, .planSearch:
-            PlanPlaceholderView()
+        case .plan:
+            PlanFeatureView()
+        case .planSearch:
+            PlanFeatureView(initialSearch: parsePlanSearch(tile.actionData))
         case .grades:
             GradesFeatureView()
         case .info:
@@ -74,6 +103,20 @@ struct HomeView: View {
         case .url:
             URLFeatureView(urlString: tile.actionData ?? "")
         case .activity:
+            activityDestination(for: tile)
+        }
+    }
+
+    @ViewBuilder
+    private func activityDestination(for tile: Tile) -> some View {
+        let activityName = (tile.actionData ?? "").lowercased()
+        if activityName.contains("attendanceactivity") {
+            AttendanceFeatureView()
+        } else if activityName.contains("usefullinksactivity") {
+            UsefulLinksFeatureView()
+        } else if activityName.contains("settingsactivity") {
+            SettingsFeatureView()
+        } else {
             GenericActivityPlaceholderView(title: tile.title)
         }
     }
@@ -88,5 +131,45 @@ struct HomeView: View {
         }
 
         return clean.components(separatedBy: " ").first ?? clean
+    }
+
+    private func quickLinkRow(title: String, subtitle: String) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.65))
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.white.opacity(0.06))
+        )
+    }
+
+    private func parsePlanSearch(_ raw: String?) -> PlanSearchParams? {
+        guard let raw,
+              let data = raw.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+
+        let category = (json["ck"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "number"
+        let query = (json["q"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !query.isEmpty else {
+            return nil
+        }
+
+        return PlanSearchParams(category: category, query: query)
     }
 }

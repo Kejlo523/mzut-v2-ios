@@ -1,0 +1,98 @@
+name: iOS Cloud Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test-screenshots:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      APP_BUNDLE_ID: pl.kejlo.mzut.ios
+      DERIVED_DATA: DerivedData
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          if [ -d "/Applications/Xcode_16.2.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          fi
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Project
+        run: xcodegen generate
+
+      - name: Select Simulator
+        run: |
+          set -euo pipefail
+          xcrun simctl shutdown all || true
+
+          UDID="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone 16 Pro/{print $2; exit}')"
+          if [ -z "$UDID" ]; then
+            UDID="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone 16/{print $2; exit}')"
+          fi
+          if [ -z "$UDID" ]; then
+            UDID="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone 15 Pro/{print $2; exit}')"
+          fi
+          if [ -z "$UDID" ]; then
+            UDID="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone 15/{print $2; exit}')"
+          fi
+
+          if [ -z "$UDID" ]; then
+            echo "No supported iPhone simulator available."
+            exit 1
+          fi
+
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+
+          echo "SIMULATOR_UDID=$UDID" >> "$GITHUB_ENV"
+          echo "Using simulator: $UDID"
+
+      - name: Build
+        run: |
+          xcodebuild \
+            -scheme mZUTiOSApp \
+            -destination "id=${SIMULATOR_UDID}" \
+            -derivedDataPath "${DERIVED_DATA}" \
+            build
+
+      - name: Test
+        run: |
+          xcodebuild \
+            -scheme mZUTiOSApp \
+            -destination "id=${SIMULATOR_UDID}" \
+            -derivedDataPath "${DERIVED_DATA}" \
+            test
+
+      - name: Install App on Simulator
+        run: |
+          set -euo pipefail
+          APP_PATH="$(find "${DERIVED_DATA}/Build/Products" -maxdepth 3 -type d -name "mZUTiOSApp.app" | head -n 1)"
+          if [ -z "$APP_PATH" ]; then
+            echo "mZUTiOSApp.app not found in DerivedData."
+            exit 1
+          fi
+
+          xcrun simctl install "${SIMULATOR_UDID}" "$APP_PATH"
+
+      - name: Capture Screenshots and Walkthrough
+        run: |
+          SIMULATOR_UDID="${SIMULATOR_UDID}" \
+          APP_BUNDLE_ID="${APP_BUNDLE_ID}" \
+          OUTPUT_DIR="artifacts" \
+          bash scripts/ios_capture_artifacts.sh
+
+      - name: Upload Visual Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-visual-artifacts
+          path: artifacts

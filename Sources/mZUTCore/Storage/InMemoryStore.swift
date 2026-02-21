@@ -21,6 +21,10 @@ public final class InMemoryStore: KeyValueStore {
         storage[key] as? Bool ?? false
     }
 
+    public func boolExists(forKey key: String) -> Bool {
+        storage[key] != nil
+    }
+
     public func set(_ value: String?, forKey key: String) {
         storage[key] = value
     }

@@ -5,6 +5,7 @@ public protocol KeyValueStore {
     func integer(forKey key: String) -> Int
     func data(forKey key: String) -> Data?
     func bool(forKey key: String) -> Bool
+    func boolExists(forKey key: String) -> Bool
 
     func set(_ value: String?, forKey key: String)
     func set(_ value: Int, forKey key: String)

@@ -28,6 +28,10 @@ public final class UserDefaultsStore: KeyValueStore {
         defaults.bool(forKey: key)
     }
 
+    public func boolExists(forKey key: String) -> Bool {
+        defaults.object(forKey: key) != nil
+    }
+
     public func set(_ value: String?, forKey key: String) {
         defaults.set(value, forKey: key)
     }

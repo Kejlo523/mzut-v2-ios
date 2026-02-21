@@ -1,14 +1,11 @@
-﻿# mZUT iOS (port 1:1 - start)
+﻿# mZUT iOS
 
-Ten katalog zawiera start portu iOS dla `mzut-v2`:
-- warstwa core przepisana z Androida (sesja, auth, API, oceny, info, news, kafelki),
-- UI SwiftUI: login + home + podstawowe ekrany danych,
-- testy jednostkowe dla najwazniejszych elementow core.
+Repozytorium zawiera port iOS aplikacji `mzut-v2` (tylko aplikacja iOS, bez WearOS/watch).
 
-## Struktura
-- `Sources/mZUTCore` - logika aplikacji niezalezna od UI.
-- `Sources/mZUTiOSApp` - SwiftUI app.
-- `Tests/mZUTCoreTests` - testy jednostkowe.
+## Zakres
+- `Sources/mZUTCore`: warstwa logiki (sesja, auth, API, plan, oceny, info, news, obecnosci, linki, ustawienia).
+- `Sources/mZUTiOSApp`: SwiftUI UI (login, home, plan, oceny, info, news, obecnosci, przydatne strony, ustawienia).
+- `Tests/mZUTCoreTests`: testy jednostkowe warstwy core.
 
 ## Build i test (macOS)
 Wymagania:
@@ -17,19 +14,15 @@ Wymagania:
 - XcodeGen (`brew install xcodegen`)
 
 Kroki:
-1. `cd ios/mZUTiOS`
-2. `xcodegen generate`
-3. `xcodebuild -scheme mZUTiOSApp -destination 'platform=iOS Simulator,name=iPhone 16' build`
-4. `xcodebuild -scheme mZUTiOSApp -destination 'platform=iOS Simulator,name=iPhone 16' test`
+1. `xcodegen generate`
+2. `xcodebuild -scheme mZUTiOSApp -destination 'platform=iOS Simulator,name=iPhone 16 Pro' build`
+3. `xcodebuild -scheme mZUTiOSApp -destination 'platform=iOS Simulator,name=iPhone 16 Pro' test`
 
-## Co jest juz zrobione
-- `MzutAPIClient` + wykrywanie wygaslej sesji.
-- `MzutSessionStore` (persist 1:1 kluczy jak w Androidzie).
-- `AuthRepository` z tokenem i trybem demo `Student/Test`.
-- `GradesRepository`, `StudiesInfoRepository`, `NewsRepository`.
-- `HomeRepository`, `AttendanceRepository`, `CustomPlanEventRepository`.
+## CI i screenshoty
+Workflow: `.github/workflows/ios-cloud-build.yml`
 
-## Co zostalo
-- pelny port modułu planu zajec (najwieksza czesc Androida),
-- ekran obecnosci i ustawien 1:1,
-- push/notification sync, widget i watch sync.
+Zakres workflow:
+- generowanie projektu,
+- build + test na symulatorze iOS,
+- automatyczne screenshoty wszystkich ekranow (`login`, `home`, `plan`, `grades`, `info`, `news`, `attendance`, `links`, `settings`),
+- artefakt video `walkthrough.mp4`.

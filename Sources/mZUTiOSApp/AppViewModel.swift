@@ -4,6 +4,18 @@ import mZUTCore
 
 @MainActor
 final class AppViewModel: ObservableObject {
+    enum AppScreen: String {
+        case login
+        case home
+        case plan
+        case grades
+        case info
+        case news
+        case attendance
+        case links
+        case settings
+    }
+
     @Published var login = ""
     @Published var password = ""
     @Published var isLoading = false
@@ -12,14 +24,17 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var isAuthenticated = false
     @Published private(set) var displayName = "Student"
     @Published private(set) var tiles: [Tile] = []
+    @Published private(set) var forcedScreen: AppScreen?
 
     let dependencies: DependencyContainer
+    var isDemoContent: Bool { dependencies.isDemoContent }
 
     private var cancellables = Set<AnyCancellable>()
 
     init(dependencies: DependencyContainer? = nil) {
         self.dependencies = dependencies ?? DependencyContainer()
         self.tiles = self.dependencies.homeRepository.loadTiles()
+        self.forcedScreen = Self.parseForcedScreen(from: self.dependencies.launchArguments)
         bindSession()
         refreshFromSession()
     }
@@ -87,5 +102,29 @@ final class AppViewModel: ObservableObject {
         } else {
             displayName = session.userId ?? "Student"
         }
+    }
+
+    private static func parseForcedScreen(from args: [String]) -> AppScreen? {
+        if let arg = args.first(where: { $0.hasPrefix("--screen=") }) {
+            let raw = arg.replacingOccurrences(of: "--screen=", with: "").lowercased()
+            switch raw {
+            case "login": return .login
+            case "home": return .home
+            case "plan": return .plan
+            case "grades": return .grades
+            case "info": return .info
+            case "news": return .news
+            case "attendance": return .attendance
+            case "links": return .links
+            case "settings": return .settings
+            default: break
+            }
+        }
+
+        if args.contains("--screenshot-home") {
+            return .home
+        }
+
+        return nil
     }
 }

@@ -36,3 +36,27 @@ public struct CustomPlanEvent: Codable, Equatable, Hashable, Identifiable {
         self.isAutoTime = isAutoTime
     }
 }
+
+public extension CustomPlanEvent.EventType {
+    var label: String {
+        switch self {
+        case .exam:
+            return "Egzamin"
+        case .pass:
+            return "Zaliczenie"
+        case .test:
+            return "Kolokwium"
+        }
+    }
+
+    var shortLabel: String {
+        switch self {
+        case .exam:
+            return "EGZAMIN!"
+        case .pass:
+            return "ZALICZENIE!"
+        case .test:
+            return "KOLOKWIUM!"
+        }
+    }
+}

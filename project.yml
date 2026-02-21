@@ -13,7 +13,8 @@ targets:
       - path: Sources/mZUTCore
     settings:
       base:
-        GENERATE_INFOPLIST_FILE: YES
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Sources/mZUTCore/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: pl.kejlo.mzut.core
   mZUTiOSApp:
     type: application
