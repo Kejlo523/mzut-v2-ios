@@ -27,6 +27,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: pl.kejlo.mzut.ios
         INFOPLIST_FILE: Sources/mZUTiOSApp/Info.plist
+        SUPPORTS_MACCATALYST: NO
   mZUTCoreTests:
     type: bundle.unit-test
     platform: iOS

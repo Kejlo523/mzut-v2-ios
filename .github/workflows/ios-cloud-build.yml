@@ -19,10 +19,35 @@ jobs:
 
       - name: Select Xcode
         run: |
-          if [ -d "/Applications/Xcode_16.2.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          set -euo pipefail
+
+          SELECTED=""
+          mapfile -t XCODES < <(ls -1d /Applications/Xcode*.app 2>/dev/null | sort -Vr)
+          for app in "${XCODES[@]}"; do
+            dev="$app/Contents/Developer"
+            if DEVELOPER_DIR="$dev" xcodebuild -showsdks 2>/dev/null | grep -q "iphonesimulator"; then
+              SELECTED="$dev"
+              break
+            fi
+          done
+
+          if [ -z "$SELECTED" ]; then
+            echo "No Xcode with iphonesimulator SDK detected. Trying to install iOS platform..."
+            xcodebuild -downloadPlatform iOS || true
+            if xcodebuild -showsdks | grep -q "iphonesimulator"; then
+              SELECTED="$(xcode-select -p)"
+            fi
           fi
+
+          if [ -z "$SELECTED" ]; then
+            echo "iphonesimulator SDK is still unavailable."
+            xcodebuild -showsdks || true
+            exit 1
+          fi
+
+          sudo xcode-select -s "$SELECTED"
           xcodebuild -version
+          xcodebuild -showsdks
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -61,7 +86,8 @@ jobs:
         run: |
           xcodebuild \
             -scheme mZUTiOSApp \
-            -destination "id=${SIMULATOR_UDID}" \
+            -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}" \
+            -sdk iphonesimulator \
             -derivedDataPath "${DERIVED_DATA}" \
             build
 
@@ -69,7 +95,8 @@ jobs:
         run: |
           xcodebuild \
             -scheme mZUTiOSApp \
-            -destination "id=${SIMULATOR_UDID}" \
+            -destination "platform=iOS Simulator,id=${SIMULATOR_UDID}" \
+            -sdk iphonesimulator \
             -derivedDataPath "${DERIVED_DATA}" \
             test
 
