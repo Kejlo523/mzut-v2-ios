@@ -22,8 +22,7 @@ jobs:
           set -euo pipefail
 
           SELECTED=""
-          mapfile -t XCODES < <(ls -1d /Applications/Xcode*.app 2>/dev/null | sort -Vr)
-          for app in "${XCODES[@]}"; do
+          for app in $(ls -1d /Applications/Xcode*.app 2>/dev/null | sort -Vr); do
             dev="$app/Contents/Developer"
             if DEVELOPER_DIR="$dev" xcodebuild -showsdks 2>/dev/null | grep -q "iphonesimulator"; then
               SELECTED="$dev"
