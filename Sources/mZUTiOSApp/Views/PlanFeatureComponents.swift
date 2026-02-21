@@ -3,14 +3,23 @@ import mZUTCore
 
 struct PlanWeekCalendarView: View {
     let dayColumns: [PlanDayColumn]
+    let anchorDate: Date
+    let showFullWeek: Bool
 
     private let timelineStartHour = 6
     private let timelineEndHour = 22
-    private let hourHeight: CGFloat = 48
-    private let hourColumnWidth: CGFloat = 56
-    private let dayColumnWidth: CGFloat = 160
+    private let hourHeight: CGFloat = 44
+    private let hourColumnWidth: CGFloat = 36
 
     private static let ymdParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    private static let ymdFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian)
@@ -26,26 +35,56 @@ struct PlanWeekCalendarView: View {
         return formatter
     }()
 
+    private var normalizedColumns: [PlanDayColumn] {
+        guard showFullWeek else {
+            return dayColumns
+        }
+
+        let parsed = dayColumns.compactMap { column -> (String, Date, [PlanEventUi])? in
+            guard let date = Self.ymdParser.date(from: column.date) else {
+                return nil
+            }
+            return (column.date, date, column.events)
+        }
+
+        let monday = startOfWeekMonday(from: parsed.map { $0.1 }.min() ?? anchorDate)
+        let map = Dictionary(uniqueKeysWithValues: dayColumns.map { ($0.date, $0.events) })
+
+        return (0..<7).compactMap { offset in
+            guard let date = Calendar.current.date(byAdding: .day, value: offset, to: monday) else {
+                return nil
+            }
+            let key = Self.ymdFormatter.string(from: date)
+            return PlanDayColumn(date: key, events: map[key] ?? [])
+        }
+    }
+
     var body: some View {
-        if dayColumns.isEmpty {
+        let columns = normalizedColumns
+        if columns.isEmpty {
             Text("Brak zajęć")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .padding(.vertical, 16)
         } else {
-            ScrollView(.horizontal) {
+            GeometryReader { proxy in
+                let dayCount = max(columns.count, 1)
+                let timelineHeight = CGFloat(timelineEndHour - timelineStartHour) * hourHeight
+                let availableWidth = max(120, proxy.size.width - hourColumnWidth)
+                let dayColumnWidth = max(36, availableWidth / CGFloat(dayCount))
+
                 VStack(spacing: 0) {
                     HStack(spacing: 0) {
                         Color.clear
-                            .frame(width: hourColumnWidth, height: 44)
+                            .frame(width: hourColumnWidth, height: 42)
 
-                        ForEach(dayColumns) { column in
+                        ForEach(columns) { column in
                             Text(headerLabel(for: column.date))
-                                .font(.caption.weight(.semibold))
+                                .font(dayColumnWidth < 45 ? .caption2.weight(.semibold) : .caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
-                                .frame(width: dayColumnWidth, height: 44)
+                                .frame(width: dayColumnWidth, height: 42)
                         }
                     }
 
@@ -56,25 +95,30 @@ struct PlanWeekCalendarView: View {
                                     Text(String(format: "%02d:00", hour))
                                         .font(.caption2)
                                         .foregroundStyle(.secondary)
-                                        .frame(width: hourColumnWidth - 8, height: hour == timelineEndHour ? 0 : hourHeight, alignment: .topTrailing)
-                                        .padding(.trailing, 8)
+                                        .frame(
+                                            width: hourColumnWidth - 4,
+                                            height: hour == timelineEndHour ? 0 : hourHeight,
+                                            alignment: .topTrailing
+                                        )
+                                        .padding(.trailing, 4)
                                 }
                             }
 
-                            ForEach(dayColumns) { day in
+                            ForEach(columns) { day in
                                 PlanTimelineDayColumn(
                                     day: day,
                                     startHour: timelineStartHour,
                                     endHour: timelineEndHour,
                                     hourHeight: hourHeight
                                 )
-                                .frame(width: dayColumnWidth, height: CGFloat(timelineEndHour - timelineStartHour) * hourHeight)
+                                .frame(width: dayColumnWidth, height: timelineHeight)
                             }
                         }
                     }
-                    .frame(height: 520)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
+            .frame(height: 560)
         }
     }
 
@@ -83,6 +127,16 @@ struct PlanWeekCalendarView: View {
             return ymd
         }
         return Self.dayHeaderFormatter.string(from: date).capitalized
+    }
+
+    private func startOfWeekMonday(from date: Date) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.firstWeekday = 2
+
+        let startOfDay = calendar.startOfDay(for: date)
+        let weekday = calendar.component(.weekday, from: startOfDay)
+        let daysFromMonday = (weekday + 5) % 7
+        return calendar.date(byAdding: .day, value: -daysFromMonday, to: startOfDay) ?? startOfDay
     }
 }
 
@@ -94,13 +148,13 @@ private struct PlanTimelineDayColumn: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 0)
+            Rectangle()
                 .fill(Color(.secondarySystemBackground).opacity(0.35))
 
             VStack(spacing: 0) {
                 ForEach(startHour..<endHour, id: \.self) { _ in
                     Rectangle()
-                        .stroke(Color(.separator).opacity(0.25), lineWidth: 0.5)
+                        .stroke(Color(.separator).opacity(0.22), lineWidth: 0.5)
                         .frame(height: hourHeight)
                 }
             }
@@ -108,15 +162,16 @@ private struct PlanTimelineDayColumn: View {
             ForEach(day.events) { event in
                 GeometryReader { geo in
                     let totalWidth = geo.size.width
-                    let top = max(0, min(CGFloat(event.topPx), geo.size.height - 22))
-                    let height = max(22, min(CGFloat(event.heightPx), geo.size.height - top))
+                    let top = max(0, min(CGFloat(event.topPx), geo.size.height - 18))
+                    let height = max(18, min(CGFloat(event.heightPx), geo.size.height - top))
 
                     let leftRatio = max(0, min(CGFloat(event.leftPct) / 100, 1))
                     let widthRatio = max(0.1, min(CGFloat(event.widthPct) / 100, 1))
                     let eventLeft = leftRatio * totalWidth
-                    let eventWidth = max(28, min(totalWidth - eventLeft, (widthRatio * totalWidth) - 4))
+                    let eventWidth = max(16, min(totalWidth - eventLeft, (widthRatio * totalWidth) - 2))
+                    let compact = totalWidth < 62
 
-                    PlanTimelineEventView(event: event)
+                    PlanTimelineEventView(event: event, compact: compact)
                         .frame(width: eventWidth, height: height)
                         .position(x: eventLeft + (eventWidth / 2), y: top + (height / 2))
                 }
@@ -124,50 +179,60 @@ private struct PlanTimelineDayColumn: View {
         }
         .overlay(
             Rectangle()
-                .stroke(Color(.separator).opacity(0.25), lineWidth: 0.7)
+                .stroke(Color(.separator).opacity(0.22), lineWidth: 0.6)
         )
     }
 }
 
 private struct PlanTimelineEventView: View {
     let event: PlanEventUi
+    let compact: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: compact ? 1 : 3) {
             Text("\(event.startStr)-\(event.endStr)")
-                .font(.caption2.weight(.semibold))
+                .font(compact ? .system(size: 7, weight: .semibold) : .caption2.weight(.semibold))
                 .lineLimit(1)
                 .foregroundStyle(.secondary)
 
-            Text(event.title)
-                .font(.caption.weight(.semibold))
-                .lineLimit(2)
+            Text(compact ? compactTitle : event.title)
+                .font(compact ? .system(size: 8, weight: .semibold) : .caption.weight(.semibold))
+                .lineLimit(compact ? 1 : 2)
 
-            if !event.room.isEmpty {
+            if !compact, !event.room.isEmpty {
                 Text(event.room)
                     .font(.caption2)
                     .lineLimit(1)
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(6)
+        .padding(compact ? 3 : 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: compact ? 5 : 8, style: .continuous)
                 .fill(eventBackground)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: compact ? 5 : 8, style: .continuous)
                 .stroke(eventBorder, lineWidth: 1)
         )
     }
 
+    private var compactTitle: String {
+        let trimmed = event.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return "Zajęcia"
+        }
+        let firstWord = trimmed.split(separator: " ").first.map(String.init) ?? trimmed
+        return String(firstWord.prefix(10))
+    }
+
     private var eventBackground: Color {
-        eventAccent.opacity(0.2)
+        eventAccent.opacity(0.22)
     }
 
     private var eventBorder: Color {
-        eventAccent.opacity(0.55)
+        eventAccent.opacity(0.56)
     }
 
     private var eventAccent: Color {

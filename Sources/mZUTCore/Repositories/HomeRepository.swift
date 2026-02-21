@@ -26,7 +26,11 @@ public final class HomeRepository {
               !tiles.isEmpty else {
             return createDefaultTiles()
         }
-        return tiles
+        let normalized = tiles.map(normalizeTileLabels)
+        if normalized != tiles {
+            saveTiles(normalized)
+        }
+        return normalized
     }
 
     public func createDefaultTiles() -> [Tile] {
@@ -37,8 +41,8 @@ public final class HomeRepository {
                 row: 0,
                 colSpan: 2,
                 rowSpan: 2,
-                title: "Plan zajec",
-                description: "Widok dnia, tygodnia i miesiaca",
+                title: "Plan zajęć",
+                description: "Widok dnia, tygodnia i miesiąca",
                 actionType: .plan
             ),
             Tile(
@@ -48,7 +52,7 @@ public final class HomeRepository {
                 colSpan: 2,
                 rowSpan: 2,
                 title: "Oceny",
-                description: "Srednia i punkty ECTS",
+                description: "Średnia i punkty ECTS",
                 actionType: .grades
             ),
             Tile(
@@ -67,8 +71,8 @@ public final class HomeRepository {
                 row: 2,
                 colSpan: 2,
                 rowSpan: 2,
-                title: "Aktualnosci ZUT",
-                description: "Komunikaty i ogloszenia",
+                title: "Aktualności ZUT",
+                description: "Komunikaty i ogłoszenia",
                 actionType: .news
             )
         ]
@@ -78,5 +82,26 @@ public final class HomeRepository {
         let defaults = createDefaultTiles()
         saveTiles(defaults)
         return defaults
+    }
+
+    private func normalizeTileLabels(_ tile: Tile) -> Tile {
+        var updated = tile
+        switch updated.actionType {
+        case .plan:
+            updated.title = "Plan zajęć"
+            updated.description = "Widok dnia, tygodnia i miesiąca"
+        case .grades:
+            updated.title = "Oceny"
+            updated.description = "Średnia i punkty ECTS"
+        case .info:
+            updated.title = "Informacje"
+            updated.description = "Dane o studiach i przebiegu"
+        case .news, .newsLatest:
+            updated.title = "Aktualności ZUT"
+            updated.description = "Komunikaty i ogłoszenia"
+        case .activity, .url, .planSearch:
+            break
+        }
+        return updated
     }
 }

@@ -11,7 +11,7 @@ struct UsefulLinksFeatureView: View {
     var body: some View {
         List {
             if isLoading {
-                ProgressView("Ladowanie linkow...")
+                ProgressView("Ładowanie linków...")
             }
 
             if let errorMessage {
@@ -20,7 +20,7 @@ struct UsefulLinksFeatureView: View {
             }
 
             if links.isEmpty && !isLoading {
-                Text("Brak zdefiniowanych linkow")
+                Text("Brak zdefiniowanych linków")
                     .foregroundStyle(.secondary)
             }
 

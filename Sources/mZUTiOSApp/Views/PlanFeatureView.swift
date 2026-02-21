@@ -37,7 +37,7 @@ struct PlanFeatureView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text(result.headerLabel.isEmpty ? "Plan zajęć" : result.headerLabel)
+                Text(result.headerLabel.isEmpty ? "Plan zajÄ™Ä‡" : result.headerLabel)
                     .font(.title3.bold())
 
                 if let searchStatusLabel {
@@ -47,9 +47,9 @@ struct PlanFeatureView: View {
                 }
 
                 Picker("Widok", selection: $viewMode) {
-                    Text("Dzień").tag(PlanViewMode.day)
-                    Text("Tydzień").tag(PlanViewMode.week)
-                    Text("Miesiąc").tag(PlanViewMode.month)
+                    Text("DzieĹ„").tag(PlanViewMode.day)
+                    Text("TydzieĹ„").tag(PlanViewMode.week)
+                    Text("MiesiÄ…c").tag(PlanViewMode.month)
                 }
                 .pickerStyle(.segmented)
 
@@ -61,7 +61,7 @@ struct PlanFeatureView: View {
                     }
                     .buttonStyle(.bordered)
 
-                    Button("Dziś") {
+                    Button("DziĹ›") {
                         goToToday()
                     }
                     .buttonStyle(.borderedProminent)
@@ -75,7 +75,7 @@ struct PlanFeatureView: View {
                 }
 
                 if isLoading {
-                    ProgressView("Ładowanie planu...")
+                    ProgressView("Ĺadowanie planu...")
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.vertical, 8)
                 }
@@ -92,7 +92,11 @@ struct PlanFeatureView: View {
                         viewMode = .day
                     })
                 } else {
-                    PlanWeekCalendarView(dayColumns: filteredDayColumns())
+                    PlanWeekCalendarView(
+                        dayColumns: filteredDayColumns(),
+                        anchorDate: currentDate,
+                        showFullWeek: viewMode == .week
+                    )
                 }
             }
             .padding(16)
@@ -373,7 +377,7 @@ struct PlanFeatureView: View {
     private func searchCategoryLabel(_ raw: String) -> String {
         let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if normalized.contains("teacher") || normalized.contains("wyk") {
-            return "Wykładowca"
+            return "WykĹ‚adowca"
         }
         if normalized.contains("room") || normalized.contains("sal") {
             return "Sala"

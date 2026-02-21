@@ -58,7 +58,8 @@ ensure_logged_in
 
 if [ ${#AUTH_ARGS[@]} -gt 0 ]; then
   capture_screen "home"
-  capture_plan_mode "week" "plan"
+  capture_plan_mode "week" "plan_week"
+  cp "$SCREENSHOT_DIR/plan_week.png" "$SCREENSHOT_DIR/plan.png"
   capture_plan_mode "day" "plan_day"
   capture_plan_mode "month" "plan_month"
   capture_screen "grades"
@@ -71,6 +72,7 @@ if [ ${#AUTH_ARGS[@]} -gt 0 ]; then
   launch_app "${AUTH_ARGS[@]}" --screen=plan --plan-view=week --plan-search-category=number --plan-search-query=57796
   sleep 8
   xcrun simctl io "$SIMULATOR_UDID" screenshot "$SCREENSHOT_DIR/plan_album_57796.png"
+  cp "$SCREENSHOT_DIR/plan_album_57796.png" "$SCREENSHOT_DIR/plan_week_album_57796.png"
 
   VIDEO_PATH="$OUTPUT_DIR/walkthrough.mp4"
   xcrun simctl terminate "$SIMULATOR_UDID" "$APP_BUNDLE_ID" >/dev/null 2>&1 || true

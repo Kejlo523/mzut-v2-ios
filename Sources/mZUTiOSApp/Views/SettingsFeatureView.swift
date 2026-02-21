@@ -19,13 +19,13 @@ struct SettingsFeatureView: View {
     private let languages = [
         ("pl", "Polski"),
         ("en", "English"),
-        ("uk", "Ukrainski"),
+        ("uk", "Ukraiński"),
         ("de", "Deutsch"),
         ("eo", "Polski (Piracki)")
     ]
 
     private let themes = [
-        ("default", "Domyslny"),
+        ("default", "Domyślny"),
         ("deep_blue", "Deep Blue"),
         ("lime", "Limonka"),
         ("high_contrast", "Wysoki kontrast")
@@ -33,18 +33,18 @@ struct SettingsFeatureView: View {
 
     private let refreshIntervals = [
         ("15", "15 min"),
-        ("30", "30 min (domyslnie)"),
+        ("30", "30 min (domyślnie)"),
         ("45", "45 min"),
         ("60", "1 godz."),
         ("120", "2 godz."),
         ("180", "3 godz."),
         ("240", "4 godz."),
-        ("0", "Nigdy (recznie)")
+        ("0", "Nigdy (ręcznie)")
     ]
 
     var body: some View {
         Form {
-            Section("Wyglad i jezyk") {
+            Section("Wygląd i język") {
                 Picker("Motyw", selection: $theme) {
                     ForEach(themes, id: \.0) { value, label in
                         Text(label).tag(value)
@@ -65,7 +65,7 @@ struct SettingsFeatureView: View {
             }
 
             Section("Widget") {
-                Picker("Odswiezanie", selection: $widgetRefresh) {
+                Picker("Odświeżanie", selection: $widgetRefresh) {
                     ForEach(refreshIntervals, id: \.0) { value, label in
                         Text(label).tag(value)
                     }
@@ -76,7 +76,7 @@ struct SettingsFeatureView: View {
             }
 
             Section("Powiadomienia") {
-                Toggle("Wlacz powiadomienia", isOn: $notifMaster)
+                Toggle("Włącz powiadomienia", isOn: $notifMaster)
                     .onChange(of: notifMaster) { newValue in
                         appViewModel.dependencies.settingsRepository.setNotificationsMasterEnabled(newValue)
                         if !newValue {
@@ -109,25 +109,25 @@ struct SettingsFeatureView: View {
                         }
                     }
 
-                Toggle("Przeniesienie zajec", isOn: $notifPlanMoved)
+                Toggle("Przeniesienie zajęć", isOn: $notifPlanMoved)
                     .disabled(!notifMaster || !notifPlan)
                     .onChange(of: notifPlanMoved) { newValue in
                         appViewModel.dependencies.settingsRepository.setNotificationsPlanMovedEnabled(newValue)
                     }
 
-                Toggle("Odwolanie zajec", isOn: $notifPlanCancelled)
+                Toggle("Odwołanie zajęć", isOn: $notifPlanCancelled)
                     .disabled(!notifMaster || !notifPlan)
                     .onChange(of: notifPlanCancelled) { newValue in
                         appViewModel.dependencies.settingsRepository.setNotificationsPlanCancelledEnabled(newValue)
                     }
 
-                Toggle("Nowe zajecia", isOn: $notifPlanAdded)
+                Toggle("Nowe zajęcia", isOn: $notifPlanAdded)
                     .disabled(!notifMaster || !notifPlan)
                     .onChange(of: notifPlanAdded) { newValue in
                         appViewModel.dependencies.settingsRepository.setNotificationsPlanAddedEnabled(newValue)
                     }
 
-                Toggle("Usuniecie zajec", isOn: $notifPlanRemoved)
+                Toggle("Usunięcie zajęć", isOn: $notifPlanRemoved)
                     .disabled(!notifMaster || !notifPlan)
                     .onChange(of: notifPlanRemoved) { newValue in
                         appViewModel.dependencies.settingsRepository.setNotificationsPlanRemovedEnabled(newValue)

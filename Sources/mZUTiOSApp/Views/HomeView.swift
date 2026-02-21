@@ -13,14 +13,7 @@ struct HomeView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Czesc, \(firstName(from: appViewModel.displayName))")
-                            .font(.title.bold())
-                            .foregroundStyle(.white)
-
-                        Text("Port iOS mZUT v2 - warstwa core i glowne moduły")
-                            .foregroundStyle(.white.opacity(0.72))
-                    }
+                    headerCard
 
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(appViewModel.tiles, id: \.id) { tile in
@@ -34,47 +27,55 @@ struct HomeView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Dodatkowe moduly")
+                        Text("Dodatkowe moduły")
                             .font(.headline)
                             .foregroundStyle(.white.opacity(0.92))
 
                         NavigationLink {
                             AttendanceFeatureView()
                         } label: {
-                            quickLinkRow(title: "Obecnosci", subtitle: "Licznik nieobecnosci i godziny")
+                            quickLinkRow(
+                                icon: "person.3.fill",
+                                title: "Obecności",
+                                subtitle: "Licznik nieobecności i godzin"
+                            )
                         }
                         .buttonStyle(.plain)
 
                         NavigationLink {
                             UsefulLinksFeatureView()
                         } label: {
-                            quickLinkRow(title: "Przydatne strony", subtitle: "Wybrane linki pod kierunek")
+                            quickLinkRow(
+                                icon: "link.circle.fill",
+                                title: "Przydatne strony",
+                                subtitle: "Wybrane linki pod kierunek"
+                            )
                         }
                         .buttonStyle(.plain)
 
                         NavigationLink {
                             SettingsFeatureView()
                         } label: {
-                            quickLinkRow(title: "Ustawienia", subtitle: "Motyw, jezyk, powiadomienia")
+                            quickLinkRow(
+                                icon: "gearshape.fill",
+                                title: "Ustawienia",
+                                subtitle: "Motyw, język, powiadomienia"
+                            )
                         }
                         .buttonStyle(.plain)
                     }
                 }
                 .padding(16)
             }
-            .background(
-                LinearGradient(
-                    colors: [Color.black, Color(red: 0.06, green: 0.09, blue: 0.14)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .ignoresSafeArea()
-            )
+            .background(backgroundLayer)
             .navigationTitle("mzutv2")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Reset") {
+                    Button {
                         appViewModel.restoreDefaultTiles()
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
                     }
                 }
 
@@ -107,6 +108,84 @@ struct HomeView: View {
         }
     }
 
+    private var headerCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("mzutv2")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.78))
+
+            Text("Cześć, \(firstName(from: appViewModel.displayName))")
+                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+
+            Text("Szybki dostęp do planu, ocen i informacji o studiach.")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.8))
+
+            if let studyLabel = activeStudyLabel {
+                HStack(spacing: 8) {
+                    Image(systemName: "graduationcap.fill")
+                        .font(.footnote)
+                    Text(studyLabel)
+                        .font(.footnote.weight(.medium))
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.white.opacity(0.12), in: Capsule())
+                .foregroundStyle(.white.opacity(0.92))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.13, green: 0.2, blue: 0.35),
+                            Color(red: 0.06, green: 0.1, blue: 0.18)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(.white.opacity(0.12), lineWidth: 1)
+        )
+    }
+
+    private var backgroundLayer: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color.black, Color(red: 0.04, green: 0.08, blue: 0.14)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            Circle()
+                .fill(Color.blue.opacity(0.18))
+                .frame(width: 280, height: 280)
+                .blur(radius: 40)
+                .offset(x: 130, y: -200)
+
+            Circle()
+                .fill(Color.cyan.opacity(0.08))
+                .frame(width: 240, height: 240)
+                .blur(radius: 36)
+                .offset(x: -140, y: 340)
+        }
+        .ignoresSafeArea()
+    }
+
+    private var activeStudyLabel: String? {
+        let active = appViewModel.dependencies.sessionStore.activeStudy
+        let label = active?.displayLabel.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return label.isEmpty ? nil : label
+    }
+
     @ViewBuilder
     private func activityDestination(for tile: Tile) -> some View {
         let activityName = (tile.actionData ?? "").lowercased()
@@ -133,8 +212,14 @@ struct HomeView: View {
         return clean.components(separatedBy: " ").first ?? clean
     }
 
-    private func quickLinkRow(title: String, subtitle: String) -> some View {
+    private func quickLinkRow(icon: String, title: String, subtitle: String) -> some View {
         HStack {
+            Image(systemName: icon)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.blue)
+                .frame(width: 28, height: 28)
+                .background(Color.blue.opacity(0.18), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.subheadline.weight(.semibold))

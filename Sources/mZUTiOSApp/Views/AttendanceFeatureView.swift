@@ -16,7 +16,7 @@ struct AttendanceFeatureView: View {
             Section {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Lacznie nieobecnosci")
+                        Text("Łącznie nieobecności")
                             .font(.headline)
                         Text(summarySubtitle)
                             .font(.footnote)
@@ -34,7 +34,7 @@ struct AttendanceFeatureView: View {
 
             if isLoading {
                 Section {
-                    ProgressView("Ladowanie listy przedmiotow...")
+                    ProgressView("Ładowanie listy przedmiotów...")
                 }
             }
 
@@ -47,7 +47,7 @@ struct AttendanceFeatureView: View {
 
             if !isLoading && absences.isEmpty {
                 Section {
-                    Text("Brak przedmiotow w planie")
+                    Text("Brak przedmiotów w planie")
                         .foregroundStyle(.secondary)
                 }
             }
@@ -59,7 +59,7 @@ struct AttendanceFeatureView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(item.subjectName)
                                     .font(.headline)
-                                Text(item.subjectType.isEmpty ? "Typ zajec" : item.subjectType)
+                                Text(item.subjectType.isEmpty ? "Typ zajęć" : item.subjectType)
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
                             }
@@ -107,7 +107,7 @@ struct AttendanceFeatureView: View {
                 }
             }
         }
-        .navigationTitle("Obecnosci")
+        .navigationTitle("Obecności")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
@@ -129,7 +129,7 @@ struct AttendanceFeatureView: View {
                         Text(subject.subjectName)
                     }
 
-                    Section("Laczna liczba godzin") {
+                    Section("Łączna liczba godzin") {
                         TextField("Godziny", text: $editingHoursValue)
                             .keyboardType(.numberPad)
                     }
@@ -159,11 +159,11 @@ struct AttendanceFeatureView: View {
     private var summarySubtitle: String {
         switch totalAbsences {
         case 0:
-            return "Brak nieobecnosci"
+            return "Brak nieobecności"
         case 1:
-            return "1 nieobecnosc"
+            return "1 nieobecność"
         default:
-            return "\(totalAbsences) nieobecnosci"
+            return "\(totalAbsences) nieobecności"
         }
     }
 
