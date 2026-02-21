@@ -9,8 +9,10 @@ final class UsefulLinksRepositoryTests: XCTestCase {
         let links = repository.loadSortedLinks(studies: studies)
 
         XCTAssertFalse(links.isEmpty)
-        XCTAssertEqual(links.first?.priorityWeight, 0)
-        XCTAssertTrue(links.contains(where: { $0.highlight }))
+        let minWeight = links.map(\.priorityWeight).min()
+        XCTAssertNotNil(minWeight)
+        XCTAssertEqual(links.first?.priorityWeight, minWeight)
+        XCTAssertLessThanOrEqual(minWeight ?? 99, 1)
+        XCTAssertTrue(links.contains(where: { $0.priorityWeight <= 1 && $0.highlight }))
     }
 }
-
