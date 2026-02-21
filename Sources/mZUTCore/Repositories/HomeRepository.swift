@@ -86,20 +86,20 @@ public final class HomeRepository {
 
     private func normalizeTileLabels(_ tile: Tile) -> Tile {
         var updated = tile
-        switch updated.actionType {
-        case .plan:
+        switch updated.id {
+        case 1 where updated.actionType == .plan:
             updated.title = "Plan zajęć"
             updated.description = "Widok dnia, tygodnia i miesiąca"
-        case .grades:
+        case 2 where updated.actionType == .grades:
             updated.title = "Oceny"
             updated.description = "Średnia i punkty ECTS"
-        case .info:
+        case 3 where updated.actionType == .info:
             updated.title = "Informacje"
             updated.description = "Dane o studiach i przebiegu"
-        case .news, .newsLatest:
+        case 4 where updated.actionType == .news || updated.actionType == .newsLatest:
             updated.title = "Aktualności ZUT"
             updated.description = "Komunikaty i ogłoszenia"
-        case .activity, .url, .planSearch:
+        default:
             break
         }
         return updated
