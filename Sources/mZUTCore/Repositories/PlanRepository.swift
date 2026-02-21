@@ -1076,12 +1076,12 @@ public actor PlanRepository {
 
     private func eventTypeLabel(_ event: PlanEventRaw) -> String {
         switch eventTypeClass(event) {
-        case "week-event-type-lecture": return "Wyklad"
+        case "week-event-type-lecture": return "Wykład"
         case "week-event-type-lab": return "Laboratorium"
         case "week-event-type-auditory": return "Audytoryjne"
         case "week-event-type-exam": return "Egzamin"
         case "week-event-type-pass": return "Zaliczenie"
-        case "week-event-type-cancelled": return "Odwolane"
+        case "week-event-type-cancelled": return "Odwołane"
         case "week-event-type-remote": return "Zdalne"
         default: return event.lessonForm
         }
@@ -1108,7 +1108,7 @@ public actor PlanRepository {
 
     private func getFilterTypeLabel(_ typeKey: String) -> String {
         switch typeKey {
-        case "lec": return "Wyklad"
+        case "lec": return "Wykład"
         case "aud": return "Audytoryjne"
         case "lab": return "Laboratorium"
         default: return ""

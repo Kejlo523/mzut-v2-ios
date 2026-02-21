@@ -40,6 +40,18 @@ public final class NewsRepository {
         }
     }
 
+    public func cachedNews() -> [NewsItem] {
+        loadCachedRegardlessOfAge() ?? []
+    }
+
+    public func shouldFetchFromNetwork(maxAge: TimeInterval = CachePolicy.newsTTL) -> Bool {
+        let timestamp = TimeInterval(store.integer(forKey: Keys.cacheTimestamp))
+        guard timestamp > 0 else {
+            return true
+        }
+        return (Date().timeIntervalSince1970 - timestamp) > maxAge
+    }
+
     public func cacheTimestamp() -> Date? {
         let seconds = store.integer(forKey: Keys.cacheTimestamp)
         guard seconds > 0 else {
@@ -50,7 +62,7 @@ public final class NewsRepository {
 
     private func fetchFromNetwork() async throws -> [NewsItem] {
         var request = URLRequest(url: Self.rssURL)
-        request.setValue("mZUTv2-iOS-News/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("mZUTv2-iOS-News/1.2-RSS", forHTTPHeaderField: "User-Agent")
 
         let (data, response) = try await urlSession.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse,
@@ -70,7 +82,7 @@ public final class NewsRepository {
 
             let plainDescription = Self.stripHtml(descriptionHtml)
             let snippet = plainDescription.count > 220
-                ? String(plainDescription.prefix(217)) + "..."
+                ? String(plainDescription.prefix(217)) + "…"
                 : plainDescription
 
             let thumbUrl = Self.extractFirstImageURL(from: contentHtml).map(Self.fixImageURL) ?? ""

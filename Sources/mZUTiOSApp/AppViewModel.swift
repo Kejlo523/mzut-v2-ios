@@ -26,6 +26,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var tiles: [Tile] = []
     @Published private(set) var forcedScreen: AppScreen?
     @Published private(set) var forcedPlanSearch: PlanSearchParams?
+    @Published private(set) var forcedPlanViewMode: PlanViewMode?
 
     let dependencies: DependencyContainer
     var isDemoContent: Bool { dependencies.isDemoContent }
@@ -37,6 +38,7 @@ final class AppViewModel: ObservableObject {
         self.tiles = self.dependencies.homeRepository.loadTiles()
         self.forcedScreen = Self.parseForcedScreen(from: self.dependencies.launchArguments)
         self.forcedPlanSearch = Self.parseForcedPlanSearch(from: self.dependencies.launchArguments)
+        self.forcedPlanViewMode = Self.parseForcedPlanViewMode(from: self.dependencies.launchArguments)
         bindSession()
         refreshFromSession()
     }
@@ -147,5 +149,27 @@ final class AppViewModel: ObservableObject {
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
         return PlanSearchParams(category: (category?.isEmpty == false ? category! : "number"), query: query)
+    }
+
+    private static func parseForcedPlanViewMode(from args: [String]) -> PlanViewMode? {
+        guard let arg = args.first(where: { $0.hasPrefix("--plan-view=") }) else {
+            return nil
+        }
+
+        let raw = arg
+            .replacingOccurrences(of: "--plan-view=", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        switch raw {
+        case "day", "dzien":
+            return .day
+        case "week", "tydzien":
+            return .week
+        case "month", "miesiac":
+            return .month
+        default:
+            return nil
+        }
     }
 }

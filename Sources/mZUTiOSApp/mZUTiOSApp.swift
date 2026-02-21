@@ -27,7 +27,12 @@ struct MzutIOSApp: App {
         case .home:
             HomeView()
         case .plan:
-            NavigationStack { PlanFeatureView(initialSearch: viewModel.forcedPlanSearch) }
+            NavigationStack {
+                PlanFeatureView(
+                    initialSearch: viewModel.forcedPlanSearch,
+                    initialViewMode: viewModel.forcedPlanViewMode
+                )
+            }
         case .grades:
             NavigationStack { GradesFeatureView() }
         case .info:

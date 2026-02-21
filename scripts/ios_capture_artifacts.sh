@@ -16,9 +16,20 @@ capture_screen() {
   xcrun simctl io "$SIMULATOR_UDID" screenshot "$SCREENSHOT_DIR/$screen.png"
 }
 
+capture_plan_screen() {
+  local mode="$1"
+  local name="$2"
+  xcrun simctl terminate "$SIMULATOR_UDID" "$APP_BUNDLE_ID" >/dev/null 2>&1 || true
+  xcrun simctl launch "$SIMULATOR_UDID" "$APP_BUNDLE_ID" --args --ui-demo --screen=plan "--plan-view=$mode" >/dev/null
+  sleep 3
+  xcrun simctl io "$SIMULATOR_UDID" screenshot "$SCREENSHOT_DIR/$name.png"
+}
+
 capture_screen "login"
 capture_screen "home"
-capture_screen "plan"
+capture_plan_screen "week" "plan"
+capture_plan_screen "day" "plan_day"
+capture_plan_screen "month" "plan_month"
 capture_screen "grades"
 capture_screen "info"
 capture_screen "news"
@@ -28,7 +39,7 @@ capture_screen "settings"
 
 # Real network screenshot: week view + search by album number.
 xcrun simctl terminate "$SIMULATOR_UDID" "$APP_BUNDLE_ID" >/dev/null 2>&1 || true
-xcrun simctl launch "$SIMULATOR_UDID" "$APP_BUNDLE_ID" --args --screen=plan --plan-search-category=number --plan-search-query=57796 >/dev/null
+xcrun simctl launch "$SIMULATOR_UDID" "$APP_BUNDLE_ID" --args --screen=plan --plan-view=week --plan-search-category=number --plan-search-query=57796 >/dev/null
 sleep 6
 xcrun simctl io "$SIMULATOR_UDID" screenshot "$SCREENSHOT_DIR/plan_album_57796.png"
 

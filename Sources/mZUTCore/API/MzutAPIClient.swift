@@ -14,11 +14,11 @@ public enum MzutAPIError: Error, LocalizedError {
         case .unauthorized(let code):
             return "Brak autoryzacji (HTTP \(code))"
         case .httpError(let code):
-            return "Blad HTTP \(code)"
+            return "Błąd HTTP \(code)"
         case .invalidJSON:
-            return "Niepoprawna odpowiedz JSON"
+            return "Niepoprawna odpowiedź JSON"
         case .sessionExpired(let reason):
-            return reason.isEmpty ? "Sesja wygasla" : "Sesja wygasla: \(reason)"
+            return reason.isEmpty ? "Sesja wygasła" : "Sesja wygasła: \(reason)"
         }
     }
 }

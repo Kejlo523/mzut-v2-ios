@@ -5,7 +5,7 @@ struct MonthGridView: View {
     let grid: [[PlanMonthCell?]]
     let onSelect: (Date) -> Void
 
-    private let dayHeaders = ["Pon", "Wt", "Sr", "Czw", "Pt", "Sob", "Nd"]
+    private let dayHeaders = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nd"]
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -27,28 +27,18 @@ struct MonthGridView: View {
                 HStack {
                     ForEach(Array(row.enumerated()), id: \.offset) { _, cell in
                         if let cell {
-                            Button {
-                                if let date = dateFormatter.date(from: cell.date) {
-                                    onSelect(date)
+                            if cell.hasPlan {
+                                Button {
+                                    if let date = dateFormatter.date(from: cell.date) {
+                                        onSelect(date)
+                                    }
+                                } label: {
+                                    monthCell(for: cell)
                                 }
-                            } label: {
-                                VStack(spacing: 6) {
-                                    Text(dayNumber(from: cell.date))
-                                        .font(.subheadline.weight(.medium))
-                                        .foregroundStyle(.primary)
-
-                                    Circle()
-                                        .fill(cell.hasPlan ? Color.blue : Color.clear)
-                                        .frame(width: 6, height: 6)
-                                }
-                                .frame(maxWidth: .infinity, minHeight: 40)
-                                .padding(.vertical, 4)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .fill(Color(.secondarySystemBackground))
-                                )
+                                .buttonStyle(.plain)
+                            } else {
+                                monthCell(for: cell)
                             }
-                            .buttonStyle(.plain)
                         } else {
                             Rectangle()
                                 .fill(Color.clear)
@@ -67,6 +57,29 @@ struct MonthGridView: View {
         let day = Calendar.current.component(.day, from: date)
         return String(day)
     }
+
+    @ViewBuilder
+    private func monthCell(for cell: PlanMonthCell) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(dayNumber(from: cell.date))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            if cell.hasPlan {
+                Text("Zajęcia")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 50, alignment: .topLeading)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(cell.hasPlan ? Color.blue.opacity(0.16) : Color(.secondarySystemBackground))
+        )
+    }
 }
 
 struct PlanSearchSheet: View {
@@ -77,7 +90,7 @@ struct PlanSearchSheet: View {
 
     private let categories: [(key: String, label: String)] = [
         ("number", "Numer albumu"),
-        ("teacher", "Wykladowca"),
+        ("teacher", "Wykładowca"),
         ("room", "Sala"),
         ("subject", "Przedmiot"),
         ("group", "Grupa")
@@ -95,7 +108,7 @@ struct PlanSearchSheet: View {
             }
 
             Section("Fraza") {
-                TextField("Wpisz szukana fraze", text: $query)
+                TextField("Wpisz szukaną frazę", text: $query)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             }
@@ -126,7 +139,7 @@ struct PlanFiltersSheet: View {
     var body: some View {
         List {
             if filters.isEmpty {
-                Text("Brak przedmiotow do filtrowania")
+                Text("Brak przedmiotów do filtrowania")
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(filters, id: \.id) { item in
@@ -142,7 +155,7 @@ struct PlanFiltersSheet: View {
                 }
             }
         }
-        .navigationTitle("Filtr przedmiotow")
+        .navigationTitle("Filtr przedmiotów")
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Reset") {
@@ -253,4 +266,3 @@ struct AddCustomEventSheet: View {
         }
     }
 }
-

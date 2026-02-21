@@ -23,13 +23,13 @@ public enum AuthRepositoryError: Error, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .missingCredentials:
-            return "Wpisz login i haslo"
+            return "Wpisz login i hasło"
         case .invalidCredentials:
-            return "Niepoprawny login lub haslo"
+            return "Niepoprawny login lub hasło"
         case .systemError:
-            return "Blad systemu mZUT"
+            return "Błąd systemu mZUT"
         case .invalidServerResponse:
-            return "Niepoprawna odpowiedz serwera"
+            return "Niepoprawna odpowiedź serwera"
         }
     }
 }

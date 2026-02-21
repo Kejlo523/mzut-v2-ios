@@ -256,20 +256,27 @@ struct NewsFeatureView: View {
     @State private var items: [NewsItem] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var sourceInfo = "Źródło RSS: studenci ZUT"
 
     var body: some View {
         List {
             if isLoading {
-                ProgressView("Pobieranie aktualnosci...")
+                ProgressView("Pobieranie aktualności...")
             }
 
             if let errorMessage {
-                Text(errorMessage)
+                Text("Błąd pobierania RSS: \(errorMessage)")
                     .foregroundStyle(.red)
             }
 
+            Section {
+                Text(sourceInfo)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
             if items.isEmpty && !isLoading {
-                Text("Brak aktualnosci")
+                Text("Brak aktualności lub problem z pobraniem kanału RSS.")
                     .foregroundStyle(.secondary)
             }
 
@@ -277,25 +284,14 @@ struct NewsFeatureView: View {
                 NavigationLink {
                     NewsDetailView(item: item)
                 } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(item.title)
-                            .font(.headline)
-                        Text(item.date)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                        Text(item.snippet)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(3)
-                    }
-                    .padding(.vertical, 4)
+                    NewsRowView(item: item)
                 }
             }
         }
-        .navigationTitle("Aktualnosci")
+        .navigationTitle("Aktualności")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Odswiez") {
+                Button("Odśwież") {
                     Task {
                         await loadNews(forceRefresh: true)
                     }
@@ -312,47 +308,50 @@ struct NewsFeatureView: View {
             return
         }
 
-        if appViewModel.isDemoContent {
-            items = [
-                NewsItem(
-                    id: 1,
-                    title: "Rejestracja na semestr letni 2025/2026",
-                    date: "20.02.2026 10:40",
-                    pubDateRaw: "",
-                    snippet: "Rozpoczela sie rejestracja na przedmioty obieralne. Sprawdz terminy i limity miejsc.",
-                    link: "https://www.zut.edu.pl",
-                    descriptionHtml: "",
-                    descriptionText: "Rozpoczela sie rejestracja na przedmioty obieralne. Sprawdz terminy i limity miejsc.",
-                    contentHtml: "",
-                    thumbUrl: ""
-                ),
-                NewsItem(
-                    id: 2,
-                    title: "Godziny pracy dziekanatu w trakcie sesji",
-                    date: "18.02.2026 09:00",
-                    pubDateRaw: "",
-                    snippet: "W okresie sesji zimowej dziekanat bedzie pracowal w wydluzonych godzinach.",
-                    link: "https://www.zut.edu.pl",
-                    descriptionHtml: "",
-                    descriptionText: "W okresie sesji zimowej dziekanat bedzie pracowal w wydluzonych godzinach.",
-                    contentHtml: "",
-                    thumbUrl: ""
-                )
-            ]
-            isLoading = false
-            return
+        let repository = appViewModel.dependencies.newsRepository
+        if !forceRefresh {
+            let cached = repository.cachedNews()
+            if !cached.isEmpty {
+                items = cached
+            }
+            refreshSourceInfo()
+            if !repository.shouldFetchFromNetwork() {
+                return
+            }
         }
 
         isLoading = true
         errorMessage = nil
 
         do {
-            items = try await appViewModel.dependencies.newsRepository.loadNews(forceRefresh: forceRefresh)
+            items = try await repository.loadNews(forceRefresh: forceRefresh)
+            refreshSourceInfo()
             isLoading = false
         } catch {
+            refreshSourceInfo()
             errorMessage = error.localizedDescription
             isLoading = false
         }
+    }
+
+    private func refreshSourceInfo() {
+        let base = "Źródło RSS: studenci ZUT"
+        guard let timestamp = appViewModel.dependencies.newsRepository.cacheTimestamp() else {
+            sourceInfo = base
+            return
+        }
+        sourceInfo = "\(base) • \(relativeTime(from: timestamp))"
+    }
+
+    private func relativeTime(from date: Date) -> String {
+        if abs(Date().timeIntervalSince(date)) < 60 {
+            return "przed chwilą"
+        }
+
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "pl_PL")
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: date, relativeTo: Date())
     }
 }
 
@@ -367,16 +366,104 @@ struct NewsDetailView: View {
                 Text(item.date)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                Text(item.descriptionText.isEmpty ? item.snippet : item.descriptionText)
+                Text(newsBodyText)
                     .font(.body)
                 if let url = URL(string: item.link), !item.link.isEmpty {
-                    Link("Otworz artykul", destination: url)
+                    Link("Otwórz artykuł", destination: url)
                 }
             }
             .padding(16)
         }
-        .navigationTitle("Szczegoly")
+        .navigationTitle("Wpis")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var newsBodyText: String {
+        if let content = htmlToText(item.contentHtml), !content.isEmpty {
+            return content
+        }
+        return item.descriptionText.isEmpty ? item.snippet : item.descriptionText
+    }
+
+    private func htmlToText(_ html: String) -> String? {
+        let trimmed = html.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let data = trimmed.data(using: .utf8) else {
+            return nil
+        }
+
+        guard let attributed = try? NSAttributedString(
+            data: data,
+            options: [
+                .documentType: NSAttributedString.DocumentType.html,
+                .characterEncoding: String.Encoding.utf8.rawValue
+            ],
+            documentAttributes: nil
+        ) else {
+            return nil
+        }
+
+        let text = attributed.string
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
+    }
+}
+
+private struct NewsRowView: View {
+    let item: NewsItem
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(item.title)
+                    .font(.headline)
+                    .lineLimit(3)
+                Text(item.date)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Text(item.snippet)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+            }
+
+            if let imageURL = imageURL {
+                AsyncImage(url: imageURL) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    case .failure:
+                        placeholder
+                    @unknown default:
+                        placeholder
+                    }
+                }
+                .frame(width: 90, height: 72)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var imageURL: URL? {
+        guard !item.thumbUrl.isEmpty else {
+            return nil
+        }
+        return URL(string: item.thumbUrl)
+    }
+
+    private var placeholder: some View {
+        RoundedRectangle(cornerRadius: 10, style: .continuous)
+            .fill(Color.secondary.opacity(0.15))
+            .overlay(
+                Image(systemName: "newspaper")
+                    .foregroundStyle(.secondary)
+            )
     }
 }
 

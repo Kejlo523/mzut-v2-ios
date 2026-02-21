@@ -6,9 +6,9 @@ struct PlanFeatureView: View {
 
     private let initialSearch: PlanSearchParams?
 
-    @State private var viewMode: PlanViewMode = .week
-    @State private var currentDate = Date()
-    @State private var result = PlanResult(viewMode: .week)
+    @State private var viewMode: PlanViewMode
+    @State private var currentDate: Date
+    @State private var result: PlanResult
     @State private var isLoading = false
     @State private var errorMessage: String?
 
@@ -24,20 +24,48 @@ struct PlanFeatureView: View {
     @State private var availableFilters: [SubjectFilterItem] = []
     @State private var excludedFilterKeys = Set<String>()
 
-    init(initialSearch: PlanSearchParams? = nil) {
+    private static let ymdParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    private static let dayHeaderFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "pl_PL")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = "dd.MM.yyyy (EE)"
+        return formatter
+    }()
+
+    init(initialSearch: PlanSearchParams? = nil, initialViewMode: PlanViewMode? = nil) {
         self.initialSearch = initialSearch
+
+        let selectedMode = initialViewMode ?? .week
+        let today = Date()
+        _viewMode = State(initialValue: selectedMode)
+        _currentDate = State(initialValue: today)
+        _result = State(initialValue: PlanResult(viewMode: selectedMode))
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text(result.headerLabel.isEmpty ? "Plan zajec" : result.headerLabel)
+                Text(result.headerLabel.isEmpty ? "Plan zajęć" : result.headerLabel)
                     .font(.title3.bold())
 
+                if let searchStatusLabel {
+                    Text(searchStatusLabel)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
                 Picker("Widok", selection: $viewMode) {
-                    Text("Dzien").tag(PlanViewMode.day)
-                    Text("Tydzien").tag(PlanViewMode.week)
-                    Text("Miesiac").tag(PlanViewMode.month)
+                    Text("Dzień").tag(PlanViewMode.day)
+                    Text("Tydzień").tag(PlanViewMode.week)
+                    Text("Miesiąc").tag(PlanViewMode.month)
                 }
                 .pickerStyle(.segmented)
 
@@ -49,12 +77,8 @@ struct PlanFeatureView: View {
                     }
                     .buttonStyle(.bordered)
 
-                    Button("Dzis") {
-                        currentDate = Date()
-                        isSearchMode = false
-                        Task {
-                            await loadPlan(forceScopeRefresh: false)
-                        }
+                    Button("Dziś") {
+                        goToToday()
                     }
                     .buttonStyle(.borderedProminent)
 
@@ -67,7 +91,7 @@ struct PlanFeatureView: View {
                 }
 
                 if isLoading {
-                    ProgressView("Ladowanie planu...")
+                    ProgressView("Ładowanie planu...")
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.vertical, 8)
                 }
@@ -86,12 +110,12 @@ struct PlanFeatureView: View {
                 } else {
                     ForEach(filteredDayColumns(), id: \.id) { day in
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(day.date)
+                            Text(formattedDayColumnLabel(day.date))
                                 .font(.headline)
                                 .foregroundStyle(.secondary)
 
                             if day.events.isEmpty {
-                                Text("Brak zajec")
+                                Text("Brak zajęć")
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
                                     .padding(.vertical, 6)
@@ -129,9 +153,7 @@ struct PlanFeatureView: View {
                 }
 
                 Button {
-                    Task {
-                        await loadPlan(forceScopeRefresh: true)
-                    }
+                    refreshPlan()
                 } label: {
                     Image(systemName: "arrow.clockwise")
                 }
@@ -149,20 +171,21 @@ struct PlanFeatureView: View {
             }
 
             didRunInitialLoad = true
+            currentDate = initialDateForCurrentMode()
 
             if let initialSearch,
                !initialSearch.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 searchCategory = initialSearch.category
                 searchQuery = initialSearch.query
-                await runSearch()
-            } else {
-                await loadPlan(forceScopeRefresh: false)
+                isSearchMode = true
             }
+
+            await loadCurrentResult(forceScopeRefresh: false)
         }
         .onChange(of: viewMode) { _ in
-            isSearchMode = false
+            currentDate = alignedDateForCurrentMode(currentDate)
             Task {
-                await loadPlan(forceScopeRefresh: false)
+                await loadCurrentResult(forceScopeRefresh: false)
             }
         }
         .sheet(isPresented: $isSearchSheetPresented) {
@@ -173,15 +196,13 @@ struct PlanFeatureView: View {
                     onApply: {
                         isSearchSheetPresented = false
                         Task {
-                            await runSearch()
+                            await applySearch()
                         }
                     },
                     onReset: {
                         isSearchSheetPresented = false
-                        isSearchMode = false
-                        searchQuery = ""
                         Task {
-                            await loadPlan(forceScopeRefresh: false)
+                            await resetSearchAndReload()
                         }
                     }
                 )
@@ -209,24 +230,28 @@ struct PlanFeatureView: View {
             AddCustomEventSheet { event in
                 appViewModel.dependencies.customPlanEventRepository.addEvent(event)
                 Task {
-                    await loadPlan(forceScopeRefresh: false)
+                    await loadCurrentResult(forceScopeRefresh: false)
                 }
             }
         }
     }
 
-    private func filteredDayColumns() -> [PlanDayColumn] {
-        result.dayColumns.map { day in
-            var copy = day
-            if excludedFilterKeys.isEmpty {
-                return copy
-            }
-            copy.events = day.events.filter { !excludedFilterKeys.contains($0.subjectKey) }
-            return copy
+    private var searchStatusLabel: String? {
+        guard let activeSearch else {
+            return nil
         }
+        return "Wyszukiwanie: \(searchCategoryLabel(activeSearch.category)) \(activeSearch.query)"
     }
 
-    private func loadPlan(forceScopeRefresh: Bool) async {
+    private var activeSearch: PlanSearchParams? {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard isSearchMode, !query.isEmpty else {
+            return nil
+        }
+        return PlanSearchParams(category: searchCategory, query: query)
+    }
+
+    private func loadCurrentResult(forceScopeRefresh: Bool) async {
         guard !isLoading else {
             return
         }
@@ -234,9 +259,21 @@ struct PlanFeatureView: View {
         isLoading = true
         errorMessage = nil
 
+        defer {
+            isLoading = false
+        }
+
         if appViewModel.isDemoContent {
             result = Self.makeDemoPlan(viewMode: viewMode, currentDate: currentDate)
-            isLoading = false
+            return
+        }
+
+        if let activeSearch {
+            result = await appViewModel.dependencies.planRepository.searchPlan(
+                viewMode: viewMode,
+                currentDate: currentDate,
+                search: activeSearch
+            )
             return
         }
 
@@ -250,39 +287,41 @@ struct PlanFeatureView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
-
-        isLoading = false
     }
 
-    private func runSearch() async {
-        guard !searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            isSearchMode = false
-            await loadPlan(forceScopeRefresh: false)
+    private func applySearch() async {
+        let normalized = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else {
+            await resetSearchAndReload()
             return
         }
 
-        isLoading = true
-        errorMessage = nil
+        searchQuery = normalized
         isSearchMode = true
+        await loadCurrentResult(forceScopeRefresh: false)
+    }
 
-        if appViewModel.isDemoContent {
-            result = Self.makeDemoPlan(viewMode: viewMode, currentDate: currentDate)
-            isLoading = false
-            return
+    private func resetSearchAndReload() async {
+        searchQuery = ""
+        isSearchMode = false
+        await loadCurrentResult(forceScopeRefresh: false)
+    }
+
+    private func refreshPlan() {
+        if isSearchMode {
+            searchQuery = ""
+            isSearchMode = false
         }
 
-        result = await appViewModel.dependencies.planRepository.searchPlan(
-            viewMode: viewMode,
-            currentDate: currentDate,
-            search: PlanSearchParams(category: searchCategory, query: searchQuery)
-        )
-        isLoading = false
+        Task {
+            await loadCurrentResult(forceScopeRefresh: true)
+        }
     }
 
     private func openFilterSheet() async {
         if appViewModel.isDemoContent {
             availableFilters = [
-                SubjectFilterItem(label: "Algorytmy", typeKey: "lec", typeLabel: "Wyklad", filterKey: "Algorytmy||lec"),
+                SubjectFilterItem(label: "Algorytmy", typeKey: "lec", typeLabel: "Wykład", filterKey: "Algorytmy||lec"),
                 SubjectFilterItem(label: "Programowanie iOS", typeKey: "lab", typeLabel: "Laboratorium", filterKey: "Programowanie iOS||lab"),
                 SubjectFilterItem(label: "Bazy danych", typeKey: "aud", typeLabel: "Audytoryjne", filterKey: "Bazy danych||aud")
             ]
@@ -298,6 +337,17 @@ struct PlanFeatureView: View {
         }
     }
 
+    private func filteredDayColumns() -> [PlanDayColumn] {
+        result.dayColumns.map { day in
+            var copy = day
+            if excludedFilterKeys.isEmpty {
+                return copy
+            }
+            copy.events = day.events.filter { !excludedFilterKeys.contains($0.subjectKey) }
+            return copy
+        }
+    }
+
     private func moveToPrevious() {
         switch viewMode {
         case .day:
@@ -307,8 +357,9 @@ struct PlanFeatureView: View {
         case .month:
             currentDate = Calendar.current.date(byAdding: .month, value: -1, to: currentDate) ?? currentDate
         }
+
         Task {
-            await loadPlan(forceScopeRefresh: false)
+            await loadCurrentResult(forceScopeRefresh: false)
         }
     }
 
@@ -321,9 +372,79 @@ struct PlanFeatureView: View {
         case .month:
             currentDate = Calendar.current.date(byAdding: .month, value: 1, to: currentDate) ?? currentDate
         }
+
         Task {
-            await loadPlan(forceScopeRefresh: false)
+            await loadCurrentResult(forceScopeRefresh: false)
         }
+    }
+
+    private func goToToday() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        if viewMode == .week,
+           calendar.component(.weekday, from: today) == 1,
+           let monday = calendar.date(byAdding: .day, value: 1, to: today) {
+            currentDate = monday
+        } else {
+            currentDate = today
+        }
+
+        if viewMode == .month {
+            currentDate = alignedDateForCurrentMode(currentDate)
+        }
+
+        Task {
+            await loadCurrentResult(forceScopeRefresh: false)
+        }
+    }
+
+    private func initialDateForCurrentMode() -> Date {
+        let start = Calendar.current.startOfDay(for: Date())
+        if viewMode == .week,
+           Calendar.current.component(.weekday, from: start) == 1,
+           let monday = Calendar.current.date(byAdding: .day, value: 1, to: start) {
+            return monday
+        }
+
+        return alignedDateForCurrentMode(start)
+    }
+
+    private func alignedDateForCurrentMode(_ date: Date) -> Date {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: date)
+
+        switch viewMode {
+        case .month:
+            let comps = calendar.dateComponents([.year, .month], from: start)
+            return calendar.date(from: comps).map { calendar.startOfDay(for: $0) } ?? start
+        case .day, .week:
+            return start
+        }
+    }
+
+    private func formattedDayColumnLabel(_ raw: String) -> String {
+        guard let parsed = Self.ymdParser.date(from: raw) else {
+            return raw
+        }
+        return Self.dayHeaderFormatter.string(from: parsed)
+    }
+
+    private func searchCategoryLabel(_ raw: String) -> String {
+        let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized.contains("teacher") || normalized.contains("wyk") {
+            return "Wykładowca"
+        }
+        if normalized.contains("room") || normalized.contains("sal") {
+            return "Sala"
+        }
+        if normalized.contains("group") || normalized.contains("grup") {
+            return "Grupa"
+        }
+        if normalized.contains("subject") || normalized.contains("przedm") {
+            return "Przedmiot"
+        }
+        return "Numer albumu"
     }
 
     private static func makeDemoPlan(viewMode: PlanViewMode, currentDate: Date) -> PlanResult {
@@ -346,7 +467,7 @@ struct PlanFeatureView: View {
             endStr: "09:30",
             tooltip: "Algorytmy | 08:00 - 09:30 | sala: A-101",
             typeClass: "week-event-type-lecture",
-            typeLabel: "Wyklad",
+            typeLabel: "Wykład",
             subjectKey: "Algorytmy||lec",
             teacher: "dr J. Lewandowski"
         )
@@ -390,7 +511,7 @@ struct PlanFeatureView: View {
             prevDate: day,
             nextDate: nextDay,
             todayDate: day,
-            headerLabel: viewMode == .month ? "Miesiac demo" : "Plan demo",
+            headerLabel: viewMode == .month ? "Miesiąc demo" : "Plan demo",
             debug: PlanDebug()
         )
     }
@@ -408,7 +529,7 @@ private struct PlanEventCard: View {
 
                 Spacer()
 
-                Text(event.typeLabel.isEmpty ? "Zajecia" : event.typeLabel)
+                Text(event.typeLabel.isEmpty ? "Zajęcia" : event.typeLabel)
                     .font(.caption2.weight(.bold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -445,3 +566,4 @@ private struct PlanEventCard: View {
         return .blue
     }
 }
+
