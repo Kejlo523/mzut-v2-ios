@@ -25,6 +25,7 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var displayName = "Student"
     @Published private(set) var tiles: [Tile] = []
     @Published private(set) var forcedScreen: AppScreen?
+    @Published private(set) var forcedPlanSearch: PlanSearchParams?
 
     let dependencies: DependencyContainer
     var isDemoContent: Bool { dependencies.isDemoContent }
@@ -35,6 +36,7 @@ final class AppViewModel: ObservableObject {
         self.dependencies = dependencies ?? DependencyContainer()
         self.tiles = self.dependencies.homeRepository.loadTiles()
         self.forcedScreen = Self.parseForcedScreen(from: self.dependencies.launchArguments)
+        self.forcedPlanSearch = Self.parseForcedPlanSearch(from: self.dependencies.launchArguments)
         bindSession()
         refreshFromSession()
     }
@@ -126,5 +128,24 @@ final class AppViewModel: ObservableObject {
         }
 
         return nil
+    }
+
+    private static func parseForcedPlanSearch(from args: [String]) -> PlanSearchParams? {
+        guard let queryArg = args.first(where: { $0.hasPrefix("--plan-search-query=") }) else {
+            return nil
+        }
+
+        let query = queryArg.replacingOccurrences(of: "--plan-search-query=", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            return nil
+        }
+
+        let categoryArg = args.first(where: { $0.hasPrefix("--plan-search-category=") })
+        let category = categoryArg?
+            .replacingOccurrences(of: "--plan-search-category=", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return PlanSearchParams(category: (category?.isEmpty == false ? category! : "number"), query: query)
     }
 }

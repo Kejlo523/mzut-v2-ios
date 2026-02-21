@@ -26,6 +26,12 @@ capture_screen "attendance"
 capture_screen "links"
 capture_screen "settings"
 
+# Real network screenshot: week view + search by album number.
+xcrun simctl terminate "$SIMULATOR_UDID" "$APP_BUNDLE_ID" >/dev/null 2>&1 || true
+xcrun simctl launch "$SIMULATOR_UDID" "$APP_BUNDLE_ID" --args --screen=plan --plan-search-category=number --plan-search-query=57796 >/dev/null
+sleep 6
+xcrun simctl io "$SIMULATOR_UDID" screenshot "$SCREENSHOT_DIR/plan_album_57796.png"
+
 VIDEO_PATH="$OUTPUT_DIR/walkthrough.mp4"
 xcrun simctl terminate "$SIMULATOR_UDID" "$APP_BUNDLE_ID" >/dev/null 2>&1 || true
 xcrun simctl io "$SIMULATOR_UDID" recordVideo "$VIDEO_PATH" >/dev/null 2>&1 &
