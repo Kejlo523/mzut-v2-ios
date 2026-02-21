@@ -35,9 +35,6 @@ public enum AuthRepositoryError: Error, LocalizedError {
 }
 
 public final class AuthRepository {
-    private static let limboLogin = "Student"
-    private static let limboPassword = "Test"
-
     private let apiClient: MzutAPIClient
     private let sessionStore: MzutSessionStore
 
@@ -63,25 +60,6 @@ public final class AuthRepository {
 
         guard !login.isEmpty, !password.isEmpty else {
             throw AuthRepositoryError.missingCredentials
-        }
-
-        if login == Self.limboLogin && password == Self.limboPassword {
-            return await MainActor.run {
-                let result = AuthResult(
-                    userId: "st123456",
-                    username: "Student (demo)",
-                    authKey: "Student_TOKEN",
-                    imageUrl: nil
-                )
-                sessionStore.updateUser(
-                    userId: result.userId,
-                    username: result.username,
-                    authKey: result.authKey,
-                    imageUrl: result.imageUrl
-                )
-                sessionStore.saveToStorage()
-                return result
-            }
         }
 
         let token = MzutTokenGenerator.generateToken(login: login, password: password)

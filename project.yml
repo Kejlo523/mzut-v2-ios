@@ -1,4 +1,4 @@
-﻿name: mZUTiOS
+name: mzutv2
 options:
   deploymentTarget:
     iOS: '16.0'
@@ -15,7 +15,7 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Sources/mZUTCore/Info.plist
-        PRODUCT_BUNDLE_IDENTIFIER: pl.kejlo.mzut.core
+        PRODUCT_BUNDLE_IDENTIFIER: mzutv2.core
   mZUTiOSApp:
     type: application
     platform: iOS
@@ -25,7 +25,8 @@ targets:
       - target: mZUTCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: pl.kejlo.mzut.ios
+        PRODUCT_BUNDLE_IDENTIFIER: mzutv2
+        PRODUCT_NAME: mzutv2
         INFOPLIST_FILE: Sources/mZUTiOSApp/Info.plist
         SUPPORTS_MACCATALYST: NO
   mZUTCoreTests:
@@ -38,7 +39,7 @@ targets:
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: pl.kejlo.mzut.core.tests
+        PRODUCT_BUNDLE_IDENTIFIER: mzutv2.tests
 schemes:
   mZUTiOSApp:
     build:

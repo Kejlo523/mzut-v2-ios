@@ -80,14 +80,6 @@ struct UsefulLinksFeatureView: View {
         isLoading = true
         errorMessage = nil
 
-        if appViewModel.isDemoContent {
-            links = appViewModel.dependencies.usefulLinksRepository.loadSortedLinks(
-                studies: [Study(przynaleznoscId: "demo", label: "Informatyka")]
-            )
-            isLoading = false
-            return
-        }
-
         do {
             let studies = try await appViewModel.dependencies.gradesRepository.loadStudies(forceRefresh: forceRefresh)
             links = appViewModel.dependencies.usefulLinksRepository.loadSortedLinks(studies: studies)
@@ -106,4 +98,3 @@ struct UsefulLinksFeatureView: View {
         return host.replacingOccurrences(of: "www.", with: "")
     }
 }
-

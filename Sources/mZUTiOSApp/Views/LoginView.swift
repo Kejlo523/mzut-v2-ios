@@ -11,7 +11,7 @@ struct LoginView: View {
                 .font(.system(size: 72))
                 .foregroundStyle(.cyan)
 
-            Text("mZUT iOS")
+            Text("mzutv2")
                 .font(.largeTitle.bold())
 
             VStack(spacing: 12) {
@@ -21,7 +21,7 @@ struct LoginView: View {
                     .padding(12)
                     .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
 
-                SecureField("Haslo", text: $appViewModel.password)
+                SecureField("Hasło", text: $appViewModel.password)
                     .padding(12)
                     .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
             }
@@ -47,10 +47,6 @@ struct LoginView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .disabled(appViewModel.isLoading)
-
-            Text("Tryb demo: login Student / haslo Test")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
 
             Spacer()
         }

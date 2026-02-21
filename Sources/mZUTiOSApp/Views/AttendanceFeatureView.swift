@@ -175,17 +175,6 @@ struct AttendanceFeatureView: View {
         isLoading = true
         errorMessage = nil
 
-        if appViewModel.isDemoContent {
-            let demo = [
-                Absence(subjectName: "Algorytmy", subjectType: "Wyklad", subjectKey: "Algorytmy||lec", absenceCount: 1, totalHours: 30),
-                Absence(subjectName: "Programowanie iOS", subjectType: "Laboratorium", subjectKey: "Programowanie iOS||lab", absenceCount: 0, totalHours: 45),
-                Absence(subjectName: "Bazy danych", subjectType: "Audytoryjne", subjectKey: "Bazy danych||aud", absenceCount: 2, totalHours: 30)
-            ]
-            absences = appViewModel.dependencies.attendanceRepository.loadSubjectsWithAbsences(subjects: demo)
-            isLoading = false
-            return
-        }
-
         absences = await appViewModel.dependencies.attendanceRepository.loadSubjectsWithAbsences(forceRefresh: forceRefresh)
         isLoading = false
     }
@@ -230,4 +219,3 @@ struct AttendanceFeatureView: View {
         )
     }
 }
-

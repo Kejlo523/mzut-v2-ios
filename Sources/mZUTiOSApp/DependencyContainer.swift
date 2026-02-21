@@ -4,7 +4,6 @@ import mZUTCore
 @MainActor
 final class DependencyContainer {
     let launchArguments: [String]
-    let isDemoContent: Bool
 
     let sessionStore: MzutSessionStore
     let apiClient: MzutAPIClient
@@ -22,19 +21,7 @@ final class DependencyContainer {
     init() {
         let sessionStore = MzutSessionStore()
         let launchArguments = CommandLine.arguments
-        let isDemoContent = launchArguments.contains("--ui-demo") || launchArguments.contains("--screenshot-home")
-        let forcedScreen = launchArguments.first(where: { $0.hasPrefix("--screen=") })?.replacingOccurrences(of: "--screen=", with: "")
-        let shouldSeedDemoUser = isDemoContent || (forcedScreen != nil && forcedScreen != "login")
 
-        if shouldSeedDemoUser {
-            sessionStore.updateUser(
-                userId: "st123456",
-                username: "Student Demo",
-                authKey: "Student_TOKEN",
-                imageUrl: nil
-            )
-            sessionStore.saveToStorage()
-        }
         let apiClient = MzutAPIClient(sessionStore: sessionStore)
         let gradesRepository = GradesRepository(apiClient: apiClient, sessionStore: sessionStore)
         let customPlanEventRepository = CustomPlanEventRepository()
@@ -46,7 +33,6 @@ final class DependencyContainer {
         )
 
         self.launchArguments = launchArguments
-        self.isDemoContent = isDemoContent
         self.sessionStore = sessionStore
         self.apiClient = apiClient
         self.authRepository = AuthRepository(apiClient: apiClient, sessionStore: sessionStore)

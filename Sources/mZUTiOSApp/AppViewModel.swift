@@ -4,6 +4,11 @@ import mZUTCore
 
 @MainActor
 final class AppViewModel: ObservableObject {
+    private struct AutoLoginCredentials {
+        let login: String
+        let password: String
+    }
+
     enum AppScreen: String {
         case login
         case home
@@ -29,45 +34,29 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var forcedPlanViewMode: PlanViewMode?
 
     let dependencies: DependencyContainer
-    var isDemoContent: Bool { dependencies.isDemoContent }
 
     private var cancellables = Set<AnyCancellable>()
 
     init(dependencies: DependencyContainer? = nil) {
         self.dependencies = dependencies ?? DependencyContainer()
         self.tiles = self.dependencies.homeRepository.loadTiles()
-        self.forcedScreen = Self.parseForcedScreen(from: self.dependencies.launchArguments)
-        self.forcedPlanSearch = Self.parseForcedPlanSearch(from: self.dependencies.launchArguments)
-        self.forcedPlanViewMode = Self.parseForcedPlanViewMode(from: self.dependencies.launchArguments)
+        let args = self.dependencies.launchArguments
+        self.forcedScreen = Self.parseForcedScreen(from: args)
+        self.forcedPlanSearch = Self.parseForcedPlanSearch(from: args)
+        self.forcedPlanViewMode = Self.parseForcedPlanViewMode(from: args)
         bindSession()
         refreshFromSession()
+
+        if let credentials = Self.parseAutoLoginCredentials(from: args), !isAuthenticated {
+            Task {
+                await performLogin(login: credentials.login, password: credentials.password)
+            }
+        }
     }
 
     func loginUser() {
-        guard !isLoading else {
-            return
-        }
-
-        isLoading = true
-        errorMessage = nil
-
-        let currentLogin = login
-        let currentPassword = password
-
         Task {
-            do {
-                let result = try await dependencies.authRepository.login(login: currentLogin, password: currentPassword)
-                await MainActor.run {
-                    displayName = result.username
-                    isLoading = false
-                    password = ""
-                }
-            } catch {
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                    isLoading = false
-                }
-            }
+            await performLogin(login: login, password: password)
         }
     }
 
@@ -105,6 +94,34 @@ final class AppViewModel: ObservableObject {
             displayName = username
         } else {
             displayName = session.userId ?? "Student"
+        }
+    }
+
+    private func performLogin(login rawLogin: String, password rawPassword: String) async {
+        guard !isLoading else {
+            return
+        }
+
+        let cleanLogin = rawLogin.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanPassword = rawPassword.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cleanLogin.isEmpty {
+            self.login = cleanLogin
+        }
+        if !cleanPassword.isEmpty {
+            self.password = cleanPassword
+        }
+
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let result = try await dependencies.authRepository.login(login: cleanLogin, password: cleanPassword)
+            displayName = result.username
+            isLoading = false
+            password = ""
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
         }
     }
 
@@ -171,5 +188,22 @@ final class AppViewModel: ObservableObject {
         default:
             return nil
         }
+    }
+
+    private static func parseAutoLoginCredentials(from args: [String]) -> AutoLoginCredentials? {
+        guard let loginArg = args.first(where: { $0.hasPrefix("--auto-login-login=") }),
+              let passwordArg = args.first(where: { $0.hasPrefix("--auto-login-password=") }) else {
+            return nil
+        }
+
+        let login = loginArg.replacingOccurrences(of: "--auto-login-login=", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let password = passwordArg.replacingOccurrences(of: "--auto-login-password=", with: "")
+
+        guard !login.isEmpty, !password.isEmpty else {
+            return nil
+        }
+
+        return AutoLoginCredentials(login: login, password: password)
     }
 }

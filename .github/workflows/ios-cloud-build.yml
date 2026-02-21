@@ -11,7 +11,7 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 60
     env:
-      APP_BUNDLE_ID: pl.kejlo.mzut.ios
+      APP_BUNDLE_ID: mzutv2
       DERIVED_DATA: DerivedData
     steps:
       - name: Checkout
@@ -102,23 +102,66 @@ jobs:
       - name: Install App on Simulator
         run: |
           set -euo pipefail
-          APP_PATH="$(find "${DERIVED_DATA}/Build/Products" -maxdepth 3 -type d -name "mZUTiOSApp.app" | head -n 1)"
+          APP_PATH="$(find "${DERIVED_DATA}/Build/Products/Debug-iphonesimulator" -maxdepth 1 -type d -name "*.app" | head -n 1)"
           if [ -z "$APP_PATH" ]; then
-            echo "mZUTiOSApp.app not found in DerivedData."
+            echo "App bundle not found in Debug-iphonesimulator."
             exit 1
           fi
 
           xcrun simctl install "${SIMULATOR_UDID}" "$APP_PATH"
 
+      - name: Build Unsigned iPhoneOS App
+        run: |
+          xcodebuild \
+            -scheme mZUTiOSApp \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -sdk iphoneos \
+            -derivedDataPath "${DERIVED_DATA}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package Install Artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/install
+
+          SIM_APP_PATH="$(find "${DERIVED_DATA}/Build/Products/Debug-iphonesimulator" -maxdepth 1 -type d -name "*.app" | head -n 1)"
+          if [ -n "$SIM_APP_PATH" ]; then
+            ditto -c -k --sequesterRsrc --keepParent "$SIM_APP_PATH" "artifacts/install/mzutv2-simulator-app.zip"
+          fi
+
+          DEV_APP_PATH="$(find "${DERIVED_DATA}/Build/Products/Release-iphoneos" -maxdepth 1 -type d -name "*.app" | head -n 1)"
+          if [ -n "$DEV_APP_PATH" ]; then
+            rm -rf Payload
+            mkdir -p Payload
+            cp -R "$DEV_APP_PATH" "Payload/mzutv2.app"
+            /usr/bin/zip -qry "artifacts/install/mzutv2-iphoneos-unsigned.ipa" Payload
+            rm -rf Payload
+          fi
+
+          cat > artifacts/install/README_INSTALL.txt << 'EOF'
+          mzutv2-iphoneos-unsigned.ipa requires Apple code signing before installation on a physical iPhone.
+          mzutv2-simulator-app.zip is a simulator package.
+          EOF
+
       - name: Capture Screenshots and Walkthrough
         run: |
           SIMULATOR_UDID="${SIMULATOR_UDID}" \
           APP_BUNDLE_ID="${APP_BUNDLE_ID}" \
+          MZUT_LOGIN="${MZUT_LOGIN}" \
+          MZUT_PASSWORD="${MZUT_PASSWORD}" \
           OUTPUT_DIR="artifacts" \
           bash scripts/ios_capture_artifacts.sh
+        env:
+          MZUT_LOGIN: ${{ secrets.MZUT_LOGIN }}
+          MZUT_PASSWORD: ${{ secrets.MZUT_PASSWORD }}
 
       - name: Upload Visual Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ios-visual-artifacts
           path: artifacts
+

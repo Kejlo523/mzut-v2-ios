@@ -70,7 +70,7 @@ struct HomeView: View {
                 )
                 .ignoresSafeArea()
             )
-            .navigationTitle("mZUT")
+            .navigationTitle("mzutv2")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Reset") {
